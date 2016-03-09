@@ -1,0 +1,46 @@
+/*
+ * I wanted to do this: 
+ * @import ../js/node_modules/bootstrap/dist/css/bootstrap.min.css;
+ * @import ../js/node_modules/bootstrap-daterangepicker/daterangepicker.css;
+ * 
+ * Works great in my local environment with clean-css, but I haven't figured 
+ * out how to install clean-css on ix, so for now I'll explicitly load all the 
+ * style sheets in the html. 
+ */
+
+body {
+    background-color: "#ccffcc";
+}
+
+.lyrics {
+    margin-left:3em;
+    font-style:italic;
+}
+
+.attribution  {
+    font-size:smaller;
+}
+
+.row{
+	margin-top:10px;
+	margin-bottom:10px;
+}
+
+.memo {
+   border-width: 2px;
+   border-top: 2px black solid;
+}
+
+#button {
+    width:100px;
+	height:30px;
+	font-size:15px;
+    border:1px solid blue;
+}
+
+#update {
+    width:150px;
+	height:30px;
+	font-size:15px;
+    border:1px solid blue;
+}
