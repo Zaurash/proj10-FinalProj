@@ -1,0 +1,53 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html lang="en"> <head>
+<title>Calendars</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="stylesheet" type="text/css"
+     href="//cdn.jsdelivr.net/bootstrap/latest/css/bootstrap.css"
+/>
+
+<link rel="stylesheet" type="text/css"
+ href="/static/js/node_modules/bootstrap-daterangepicker/daterangepicker.css"
+/>
+
+<link rel="stylesheet" type="text/css"
+    href="/static/css/busy.css"
+/>
+
+<!-- jquery from a content distribution network; probably cached -->
+<script type="text/javascript"
+     src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js">
+</script>
+
+
+<!-- The rest of our javascript dependencies are bundled and -->
+<!-- 'minified' by 'browserify'  -->
+<script type="text/javascript" 
+   src="/static/js/busy.min.js">
+</script>
+	 
+	 
+	 
+	 
+	 
+<div class="col-lg-5">
+	<p>Select the Calendars with which you would like to check for open times</p>
+	
+{% if session.calendars is defined  %}
+  <div class="col-lg-5">
+  <h4>Calendars</h4>
+  {% for cal in session.calendars if cal.selected %}
+          <div class="row-md-4">
+	   {{ cal.summary }}
+	     <input id="{{cal.id}}" name="check1" type="checkbox" {% if cal.id in session.selected_cal|safe %} checked {% endif %}>
+          </div>
+         <!-- {% if loop.index is divisibleby 3 %}
+          </div> <div class="row">
+         {% endif %} -->
+  {% endfor %}
+  <br>
+  <button onclick="CalcBusyFreeTimes()">Calculate Busy & Free Times</button>
+</div>
+{% endif %} 
+</div>

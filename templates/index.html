@@ -66,9 +66,22 @@
   {% endif %}
 {% endwith %}
 
-<h2>Date range</h2>
   <form action="/setrange" method="post">
-  <div class="col-lg-2">
+	  
+	  
+  <div class="col-lg-3">
+  <div class="row-lg-3">
+  <label> Meeting Name </label>
+  <input type="text" size="20" value="Important Rendezvous">
+</div>
+  <div class="row-lg-2">
+  <label> Location </label>
+  <input type="text" size="20" value="My balcony">
+</div>
+
+  
+  <h4>Date range</h4>
+  
   <input type="text" name="daterange" size="12"
     {% if session.daterange is defined %}
          value="{{session.daterange}}"

@@ -20,6 +20,10 @@ import httplib2   # used in oauth2 flow
 # Google API for services 
 from apiclient import discovery
 
+# Mongo database
+from pymongo import MongoClient
+from bson.objectid import ObjectId
+
 ###
 # Globals
 ###
@@ -55,6 +59,26 @@ def index():
   flask.session['calendars'] = list_calendars(gcal_service)
 
   return render_template('index.html')
+  
+@app.route("/calendar_page")
+def calendar_page():
+  app.logger.debug("Entering index")
+  if 'begin_date' not in flask.session:
+    init_session_values()
+  
+  app.logger.debug("Checking credentials for Google calendar access")
+  credentials = valid_credentials()
+  if not credentials:
+    app.logger.debug("Redirecting to authorization")
+    return flask.redirect(flask.url_for('oauth2callback'))
+
+
+  gcal_service = get_gcal_service(credentials)
+  app.logger.debug("Returned from get_gcal_service")
+  flask.session['calendars'] = list_calendars(gcal_service)
+
+  return render_template('calendar_page.html')
+  
 
 @app.route("/choose")
 def choose():
