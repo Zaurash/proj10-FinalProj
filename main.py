@@ -3,9 +3,17 @@ from flask import render_template
 from flask import request
 from flask import url_for
 import uuid
+import sys
 
 import json
 import logging
+
+# Mongo database
+from pymongo import MongoClient
+from bson.objectid import ObjectId
+
+# Functions for working on google events
+from google_events import *
 
 # Date handling 
 import arrow # Replacement for datetime, based on moment.js
@@ -20,14 +28,12 @@ import httplib2   # used in oauth2 flow
 # Google API for services 
 from apiclient import discovery
 
-# Mongo database
-from pymongo import MongoClient
-from bson.objectid import ObjectId
-
 ###
 # Globals
 ###
+
 import CONFIG
+
 app = flask.Flask(__name__)
 
 SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
@@ -43,49 +49,213 @@ APPLICATION_NAME = 'MeetMe class project'
 @app.route("/")
 @app.route("/index")
 def index():
-  app.logger.debug("Entering index")
+    app.logger.debug("Entering index")
+
+    return render_template('index.html')
+
+@app.route("/account", methods = ["POST"])
+def account():
+  app.logger.debug("Entering account")
+
+  username = request.form.get("username")
+  password = request.form.get("password")
+
+  flask.session["username"] = username
+  flask.session["password"] = password
+
+  try:
+      MONGO_URL = "mongodb://{}:{}@localhost:{}/proposals".format(username,password,CONFIG.MONGO_PORT)
+      dbclient = MongoClient(MONGO_URL)
+      db = dbclient.proposals
+      global collection
+      collection = db.dated
+  except:
+      print("Failure opening database.  Is Mongo running? Correct password?")
+      sys.exit(1)
+
   if 'begin_date' not in flask.session:
     init_session_values()
-  
+
+  ## We'll need authorization to list calendars
+  ## I wanted to put what follows into a function, but had
+  ## to pull it back here because the redirect has to be a
+  ## 'return'
   app.logger.debug("Checking credentials for Google calendar access")
   credentials = valid_credentials()
   if not credentials:
-    app.logger.debug("Redirecting to authorization")
-    return flask.redirect(flask.url_for('oauth2callback'))
-
+      app.logger.debug("Redirecting to authorization")
+      return flask.redirect(flask.url_for('oauth2callback'))
 
   gcal_service = get_gcal_service(credentials)
   app.logger.debug("Returned from get_gcal_service")
   flask.session['calendars'] = list_calendars(gcal_service)
+  flask.session['proposals'] = getProposals()
+  return render_template('account.html')
 
-  return render_template('index.html')
-  
-@app.route("/calendar_page")
-def calendar_page():
-  app.logger.debug("Entering index")
+@app.route("/home")
+def home():
+  app.logger.debug("Entering account")
+
   if 'begin_date' not in flask.session:
     init_session_values()
-  
+
+  ## We'll need authorization to list calendars
+  ## I wanted to put what follows into a function, but had
+  ## to pull it back here because the redirect has to be a
+  ## 'return'
   app.logger.debug("Checking credentials for Google calendar access")
   credentials = valid_credentials()
   if not credentials:
-    app.logger.debug("Redirecting to authorization")
-    return flask.redirect(flask.url_for('oauth2callback'))
-
+      app.logger.debug("Redirecting to authorization")
+      return flask.redirect(flask.url_for('oauth2callback'))
 
   gcal_service = get_gcal_service(credentials)
   app.logger.debug("Returned from get_gcal_service")
   flask.session['calendars'] = list_calendars(gcal_service)
+  flask.session['proposals'] = getProposals()
+  return render_template('account.html')
 
-  return render_template('calendar_page.html')
-  
+@app.route('/oauth2callback')
+def oauth2callback():
+  """
+  The 'flow' has this one place to call back to.  We'll enter here
+  more than once as steps in the flow are completed, and need to keep
+  track of how far we've gotten. The first time we'll do the first
+  step, the second time we'll skip the first step and do the second,
+  and so on.
+  """
+  app.logger.debug("Entering oauth2callback")
+  flow =  client.flow_from_clientsecrets(
+      CLIENT_SECRET_FILE,
+      scope= SCOPES,
+      redirect_uri=flask.url_for('oauth2callback', _external=True))
+  ## Note we are *not* redirecting above.  We are noting *where*
+  ## we will redirect to, which is this function.
 
-@app.route("/choose")
-def choose():
-    ## We'll need authorization to list calendars 
-    ## I wanted to put what follows into a function, but had
-    ## to pull it back here because the redirect has to be a
-    ## 'return' 
+  ## The *second* time we enter here, it's a callback
+  ## with 'code' set in the URL parameter.  If we don't
+  ## see that, it must be the first time through, so we
+  ## need to do step 1.
+  app.logger.debug("Got flow")
+  if 'code' not in flask.request.args:
+    app.logger.debug("Code not in flask.request.args")
+    auth_uri = flow.step1_get_authorize_url()
+    return flask.redirect(auth_uri)
+    ## This will redirect back here, but the second time through
+    ## we'll have the 'code' parameter set
+  else:
+    ## It's the second time through ... we can tell because
+    ## we got the 'code' argument in the URL.
+    app.logger.debug("Code was in flask.request.args")
+    auth_code = flask.request.args.get('code')
+    credentials = flow.step2_exchange(auth_code)
+    flask.session['credentials'] = credentials.to_json()
+    ## Now I can build the service and execute the query,
+    ## but for the moment I'll just log it and go back to
+    ## the main screen
+    app.logger.debug("Got credentials")
+    return flask.redirect(flask.url_for('home'))
+
+@app.route("/_clear", methods = ["POST"])
+def clear():
+    collection.drop()
+    app.logger.debug("Cleared Memos")
+
+    return flask.redirect(url_for("home"))
+
+@app.route("/save", methods = ["POST"])
+def save():
+    checkedEventsTitles = request.form.getlist("checkedEvent")
+    checkedEvents= []
+
+    for title in checkedEventsTitles:
+        for event in flask.session["freeTimes"]:
+            if event["summary"] == title:
+                checkedEvents.append(event)
+
+    record = {"type": "proposal",
+              "title": flask.session["title"],
+              "duration": flask.session["duration"],
+              "location": flask.session["location"],
+              "events": checkedEvents
+              }
+    collection.insert(record)
+    app.logger.debug("Saved Proposal")
+    return flask.redirect(url_for("home"))
+
+@app.route('/new', methods=['POST'])
+def new():
+    return render_template('new.html')
+
+@app.route('/view', methods=['POST'])
+def view():
+    proposalID = request.form.get("propID")
+    proposalID = ObjectId(proposalID)
+    proposal = collection.find_one({"_id": proposalID})
+    flask.session["viewedProposal"] = {
+                                       "title": proposal["title"],
+                                       "duration": proposal["duration"],
+                                       "location": proposal["location"],
+                                       "events": proposal["events"]
+                                       }
+    return render_template('view.html')
+
+@app.route('/proposal', methods=['POST'])
+def proposal():
+    checkedEventsIDs = request.form.getlist("checkedEvent")
+    busyEvents = []
+    for event in flask.session["busyEvents"]:
+        for id in checkedEventsIDs:
+            if event["id"] == id:
+                busyEvents.append(event)
+
+    busyEvents = consolidateEvents(busyEvents)
+
+    for event in busyEvents:
+        eventStart = arrow.get(event["start"]["dateTime"])
+        eventEnd = arrow.get(event["end"]["dateTime"])
+        print("Busy  at : " + event["summary"])
+        print("     from: " + eventStart.format("h:mm a MMM D YYYY"))
+        print("     until: " + eventEnd.format("h:mm a MMM D YYYY"))
+        print("     type: " + str(type(eventEnd)))
+
+    # Make events for all days in our date and time range
+
+    freeTimeEvents = []
+    day = datetime.timedelta(days=1)
+
+    startDate = arrow.get(flask.session["begin_date"]).date()
+    endDate = arrow.get(flask.session["end_date"]).date()
+    startTime = arrow.get(flask.session["begin_time"], "h:mm A").time()
+    endTime = arrow.get(flask.session["end_time"], "h:mm A").time()
+
+    while startDate <= endDate:
+        freeEvent= {"summary": "Free Time on " + str(startDate),
+                  "start": {"dateTime": arrow.get(str(startDate) + " " + str(startTime), "YYYY-MM-DD HH:mm")},
+                  "end": {"dateTime": arrow.get(str(startDate) + " " + str(endTime), "YYYY-MM-DD HH:mm")}}
+        freeTimeEvents.append(freeEvent)
+        startDate = startDate + day
+
+    meetingTimes = freeTimes(busyEvents, freeTimeEvents)
+
+    duration = flask.session["duration"]
+    meetingTimes = tooShort(meetingTimes , duration)
+
+    for event in meetingTimes:
+        eventStart = event["start"]["dateTime"]
+        eventEnd = event["end"]["dateTime"]
+        print("Free  at : " + event["summary"])
+        print("     from: " + str(eventStart))
+        print("     until: " + str(eventEnd))
+        print("     type: " + str(type(eventEnd)))
+
+    flask.session["freeTimes"] = meetingTimes
+
+    return render_template('proposal.html')
+
+@app.route('/conflicts', methods=['POST'])
+def conflicts():
+    flask.session["selected_cals"] = request.form.getlist("checkedCal")
     app.logger.debug("Checking credentials for Google calendar access")
     credentials = valid_credentials()
     if not credentials:
@@ -94,36 +264,52 @@ def choose():
 
     gcal_service = get_gcal_service(credentials)
     app.logger.debug("Returned from get_gcal_service")
-    
+
     busyEvents = []
-
     for cal in list_calendars(gcal_service):
-        events = gcal_service.events().list(calendarId=cal["id"]).execute()
-        for event in events['items']:
-            if ("transparency" in event) and event["transparency"] == "transparent":
-                continue
-            if "dateTime" in event["start"]:
-                eventStart = arrow.get(event["start"]["dateTime"])
-                eventEnd = arrow.get(event["end"]["dateTime"])
-                if containsRange(eventStart.time(), arrow.get(flask.session["begin_time"], "h:mm A").time(), eventEnd.time(), arrow.get(flask.session["end_time"], "h:mm A").time()):
-                    busyEvents.append(event)
-                    
+        for selectedCalID in flask.session["selected_cals"]:
+            if cal["id"] == selectedCalID:
+                events = gcal_service.events().list(calendarId=cal["id"]).execute()
+                for event in events['items']:
+                    if ("transparency" in event) and event["transparency"] == "transparent":
+                        continue
+                    if "dateTime" in event["start"]:
+                        eventStart = arrow.get(event["start"]["dateTime"])
+                        eventEnd = arrow.get(event["end"]["dateTime"])
+                        if eventStart.date() >= arrow.get(flask.session['begin_date']).date()\
+                                and eventEnd.date() <= arrow.get(flask.session['end_date']).date():
+                            if timeRangeContainsRange(eventStart.time(), arrow.get(flask.session["begin_time"], "h:mm A").time(),
+                                                      eventEnd.time(), arrow.get(flask.session["end_time"], "h:mm A").time()):
+                                # Event is a busy event and within our time frame
+                                busyEvents.append(event)
 
-    busyEvents = consolidateEvents(busyEvents)
-    events = []
-    for event in busyEvents:
-        if event != None:
-            events.append(event)
-                
-    for event in busyEvents:
-        eventStart = arrow.get(event["start"]["dateTime"])
-        eventEnd = arrow.get(event["end"]["dateTime"])
-        print("Busy from: " + str(eventStart.time))
-        print("     until: " + str(eventEnd).time)
-                    
-    return render_template('index.html')
+    flask.session["busyEvents"] = busyEvents
+    return render_template('conflicts.html')
 
-####
+@app.route('/calendars', methods=['POST'])
+def calendars():
+    """
+    User chose a date range with the bootstrap daterange
+    widget.
+    """
+    app.logger.debug("Entering setrange")
+    flask.flash("Setrange gave us '{}'".format(request.form.get('daterange')) + ", " + request.form.get('begin_time') + " - " + request.form.get('end_time'))
+    daterange = request.form.get('daterange')
+    flask.session['daterange'] = daterange
+    daterange_parts = daterange.split()
+    flask.session['begin_date'] = interpret_date(daterange_parts[0])
+    flask.session['end_date'] = interpret_date(daterange_parts[2])
+    flask.session['begin_time'] = request.form.get('begin_time')
+    flask.session['end_time'] = request.form.get('end_time')
+    flask.session["title"] = request.form.get('title')
+    flask.session["duration"] = request.form.get('duration')
+    flask.session["location"] = request.form.get('location')
+    app.logger.debug("Setrange parsed {} - {}  dates as {} - {}".format(
+      daterange_parts[0], daterange_parts[1],
+      flask.session['begin_date'], flask.session['end_date']))
+    return render_template('calendars.html')
+
+###
 #
 #  Google calendar authorization:
 #      Returns us to the main /choose screen after inserting
@@ -151,91 +337,6 @@ def choose():
 #  as a 'continuation' or 'return address' to use instead. 
 #
 ####
-
-def consolidateEvents(events):
-    """
-    Takes a list of events and returns a new list
-    of events where any overlapping events have been joined
-    and old events are set to none
-    """
-    app.logger.debug("enter consolidate")
-    
-    for i in range(len(events)):
-        for j in range(len(events)):
-            if events[i] == None or events[j] == None:
-                continue
-            # Skip this iteration if event and otherEvent are the same event
-            if events[i] == events[j]:
-                continue
-            # If event and otherEvent overlap, replace event with
-            # the union of other event and event and remove
-            # otherEvent from events
-            print("CHECKING EVENTS: " + events[i]["summary"] + " AND " + events[j]["summary"])
-            if eventsOverlap(events[i], events[j]):
-                union = eventsUnion(events[i], events[j])
-                events.append(union)
-                events[i] = None
-                events[j] = None
-                events = consolidateEvents(events)
-    return events
-
-def eventsUnify(event1, event2):
-    """
-    Returns an event made from the union of two events
-    """
-    if not eventsOverlap(event1, event2):
-        raise ValueError('Events do not overlap!')
-    returnEvent= {"summary": "Union of " + event1["summary"] + " and " + event2["summary"],
-                  "start": {"dateTime": None},
-                  "end": {"dateTime": None}}
-    event1Start = arrow.get(event1["start"]["dateTime"])
-    event1End = arrow.get(event1["end"]["dateTime"])
-    event2Start = arrow.get(event2["start"]["dateTime"])
-    event2End = arrow.get(event2["end"]["dateTime"])
-    if event1Start <= event2Start and event1End <= event2End:
-        returnEvent["start"]["dateTime"] = event1Start
-        returnEvent["end"]["dateTime"] = event2End
-    elif event1Start <= event2Start and event1End >= event2End:
-        returnEvent["start"]["dateTime"] = event1Start
-        returnEvent["end"]["dateTime"] = event1End
-    elif event1Start >= event2Start and event1End <= event2End:
-        returnEvent["start"]["dateTime"] = event2Start
-        returnEvent["end"]["dateTime"] = event2End
-    elif event1Start >= event2Start and event1End >= event2End:
-        returnEvent["start"]["dateTime"] = event2Start
-        returnEvent["end"]["dateTime"] = event1End
-    return returnEvent
-
-def eventsOverlap(event1, event2):
-    """
-    Returns true if two events overlap, false otherwise
-    """
-    event1Start = arrow.get(event1["start"]["dateTime"])
-    event1End = arrow.get(event1["end"]["dateTime"])
-    event2Start = arrow.get(event2["start"]["dateTime"])
-    event2End = arrow.get(event2["end"]["dateTime"])
-    if event1Start <= event2Start and event1End >= event2Start:
-        return True
-    elif event2Start <= event1Start and event2End >= event1Start:
-        return True
-    elif event1Start <= event2Start and event1End >= event2End:
-        return True
-    elif event2Start <= event1Start and event2End >= event1End:
-        return True
-    return False
-
-def containsRange(event1Start, event2Start, event1End, event2End):
-    """
-    Returns true if one event starts and ends
-    inside of the other event
-    """
-    if event2Start <= event1Start and event2End >= event1End:
-        return True
-    elif event1Start <= event2Start and event1End >= event2End:
-        return True
-    else:
-        return False
-
 
 
 def valid_credentials():
@@ -273,83 +374,6 @@ def get_gcal_service(credentials):
   app.logger.debug("Returning service")
   return service
 
-@app.route('/oauth2callback')
-def oauth2callback():
-  """
-  The 'flow' has this one place to call back to.  We'll enter here
-  more than once as steps in the flow are completed, and need to keep
-  track of how far we've gotten. The first time we'll do the first
-  step, the second time we'll skip the first step and do the second,
-  and so on.
-  """
-  app.logger.debug("Entering oauth2callback")
-  flow =  client.flow_from_clientsecrets(
-      CLIENT_SECRET_FILE,
-      scope= SCOPES,
-      redirect_uri=flask.url_for('oauth2callback', _external=True))
-  ## Note we are *not* redirecting above.  We are noting *where*
-  ## we will redirect to, which is this function. 
-  
-  ## The *second* time we enter here, it's a callback 
-  ## with 'code' set in the URL parameter.  If we don't
-  ## see that, it must be the first time through, so we
-  ## need to do step 1. 
-  app.logger.debug("Got flow")
-  if 'code' not in flask.request.args:
-    app.logger.debug("Code not in flask.request.args")
-    auth_uri = flow.step1_get_authorize_url()
-    return flask.redirect(auth_uri)
-    ## This will redirect back here, but the second time through
-    ## we'll have the 'code' parameter set
-  else:
-    ## It's the second time through ... we can tell because
-    ## we got the 'code' argument in the URL.
-    app.logger.debug("Code was in flask.request.args")
-    auth_code = flask.request.args.get('code')
-    credentials = flow.step2_exchange(auth_code)
-    flask.session['credentials'] = credentials.to_json()
-    ## Now I can build the service and execute the query,
-    ## but for the moment I'll just log it and go back to
-    ## the main screen
-    app.logger.debug("Got credentials")
-    return flask.redirect(flask.url_for('choose'))
-
-#####
-#
-#  Option setting:  Buttons or forms that add some
-#     information into session state.  Don't do the
-#     computation here; use of the information might
-#     depend on what other information we have.
-#   Setting an option sends us back to the main display
-#      page, where we may put the new information to use. 
-#
-#####
-
-@app.route('/setrange', methods=['POST'])
-def setrange():
-    """
-    User chose a date range with the bootstrap daterange
-    widget.
-    """
-    app.logger.debug("Entering setrange")  
-    flask.flash("Setrange gave us '{}'".format(request.form.get('daterange')) + ", " + request.form.get('begin_time') + " - " + request.form.get('end_time'))
-    daterange = request.form.get('daterange')
-    
-    flask.session['daterange'] = daterange
-
-    daterange_parts = daterange.split()
-    flask.session['begin_date'] = interpret_date(daterange_parts[0])
-    flask.session['end_date'] = interpret_date(daterange_parts[2])
-    flask.session['begin_time'] = request.form.get('begin_time')
-    flask.session['end_time'] = request.form.get('end_time')
-    
-    app.logger.debug("Setrange parsed {} - {}  dates as {} - {}".format(
-      daterange_parts[0], daterange_parts[1], 
-      flask.session['begin_date'], flask.session['end_date']))
-    return flask.redirect(flask.url_for("choose"))
-    
-        
-
 ####
 #
 #   Initialize session variables 
@@ -373,6 +397,32 @@ def init_session_values():
     # Default time span each day, 8 to 5
     flask.session["begin_time"] = "9:00 AM"
     flask.session["end_time"] = "5:00 PM"
+
+def getProposals():
+    """
+    Returns all proposals in the database, in a form that
+    can be inserted directly in the 'session' object.
+    """
+    records = []
+    for record in collection.find( { "type": "proposal" } ):
+        record['_id'] = str(record['_id'])
+        record["duration"] = str(record["duration"])
+        record["title"] = str(record["title"])
+        record["loaction"] = str(record["location"])
+        records.append(record)
+    records = sorted(records, key=lambda k: k['title'])
+    return records
+
+#####
+#
+#  Option setting:  Buttons or forms that add some
+#     information into session state.  Don't do the
+#     computation here; use of the information might
+#     depend on what other information we have.
+#   Setting an option sends us back to the main display
+#      page, where we may put the new information to use.
+#
+#####
 
 def interpret_time( text ):
     """

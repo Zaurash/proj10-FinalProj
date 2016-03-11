@@ -1,0 +1,48 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html lang="en"> <head>
+<title>Meeting Proposal</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="stylesheet" type="text/css"
+     href="//cdn.jsdelivr.net/bootstrap/latest/css/bootstrap.css"
+/>
+
+<link rel="stylesheet" type="text/css"
+    href="/static/css/busy.css"
+/>
+
+<!-- jquery from a content distribution network; probably cached -->
+<script type="text/javascript"
+     src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js">
+</script>
+
+
+<!-- The rest of our javascript dependencies are bundled and -->
+<!-- 'minified' by 'browserify'  -->
+<script type="text/javascript"
+   src="/static/js/busy.min.js">
+</script>
+
+<div class="container">
+    <form action="/save" method="post">
+        {% if session.calendars is defined  %}
+            <h4>Possible Meeting Times:</h4>
+            {% for event in session.freeTimes %}
+                <div class="row-md-4">
+                    <input name="checkedEvent" value="{{event.summary}}" type="checkbox" checked>
+                    Available time from {{ event.start.dateTime }} until {{ event.end.dateTime }}
+                </div>
+            {% endfor %}
+            <br>
+        {% endif %}
+        <div class="row">
+            <div class="col-sm-2">
+                <button onclick="location.href='/index';" id="button">Cancel</button>
+            </div>
+            <div class="col-sm-2">
+                <input type="submit" id="update" value="Save Proposal" />
+            </div>
+        </div>
+    </form>
+</div>

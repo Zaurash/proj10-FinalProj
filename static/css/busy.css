@@ -38,6 +38,20 @@ body {
     border:1px solid blue;
 }
 
+#back {
+    width:100px;
+	height:30px;
+	font-size:15px;
+    border:1px solid red;
+}
+
+#clear {
+    width:200px;
+	height:30px;
+	font-size:15px;
+    border:1px solid red;
+}
+
 #update {
     width:150px;
 	height:30px;

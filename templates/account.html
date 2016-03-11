@@ -1,0 +1,92 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html lang="en"> <head>
+<title>Meetings</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="stylesheet" type="text/css"
+     href="//cdn.jsdelivr.net/bootstrap/latest/css/bootstrap.css"
+/>
+
+<link rel="stylesheet" type="text/css"
+    href="/static/css/busy.css"
+/>
+
+<!-- jquery from a content distribution network; probably cached -->
+<script type="text/javascript"
+     src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js">
+</script>
+
+<!-- Include Date Range Picker Dependencies -->
+<script type="text/javascript" src="//cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.js"></script>
+<link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.css" />
+
+<!-- Include Time Picker Dependencies -->
+<script type="text/javascript" src="//cdn.jsdelivr.net/bootstrap.timepicker/0.2.6/js/bootstrap-timepicker.js"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/bootstrap.timepicker/0.2.6/js/bootstrap-timepicker.min.js"></script>
+<link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap.timepicker/0.2.6/css/bootstrap-timepicker.min.css" />
+<link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap.timepicker/0.2.6/css/bootstrap-timepicker.css" />
+
+<!-- The rest of our javascript dependencies are bundled and -->
+<!-- 'minified' by 'browserify'  -->
+<script type="text/javascript" 
+   src="/static/js/busy.min.js">
+</script>
+
+</head>
+
+<body>
+<div class="container">
+    <h1>Your Meeting Proposals</h1>
+
+<!--
+  -- If there are any warnings or other messages from a prior action,
+  -- they appear above the rest of the content, just until the next 
+  -- action.
+  -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul class=flashes>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    {% if session.proposals %}
+        {% for proposal in session.proposals %}
+            <form method="POST" action="/view">
+                <div class="proposal">
+                    <div class="row">
+                        <div class="col-md-10 text-left">
+                            {{ proposal.title }} at {{ proposal.location }}
+                        </div>
+                        <div>
+                            <input type="hidden" name="propID" value="{{ proposal._id }}" />
+                        </div>
+                        <div class="col-xs-6 text-right">
+                            <input type="submit" id="button" value="View" />
+                        </div>
+                    </div> <!-- row -->
+                </div> <!-- proposal -->
+            </form>
+        {% endfor %}
+    {% else %}
+      <p>You have no proposals</p>
+    {% endif %}
+
+    <div class="row">
+            <div class="col-sm-2">
+                <form action="/new" method="post">
+                    <input type="submit" id="update" value="Add New Proposal" />
+                </form>
+            </div>
+            <div class="col-sm-2">
+                <form method="POST" action="/_clear">
+                    <input type="submit" id="clear" value="Delete ALL Proposals" />
+                </form>
+            </div>
+    </div>
+</div>  <!-- container (for bootstrap) -->
+</body> </html>

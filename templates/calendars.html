@@ -8,10 +8,6 @@
 />
 
 <link rel="stylesheet" type="text/css"
- href="/static/js/node_modules/bootstrap-daterangepicker/daterangepicker.css"
-/>
-
-<link rel="stylesheet" type="text/css"
     href="/static/css/busy.css"
 />
 
@@ -20,34 +16,38 @@
      src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js">
 </script>
 
-
 <!-- The rest of our javascript dependencies are bundled and -->
 <!-- 'minified' by 'browserify'  -->
 <script type="text/javascript" 
    src="/static/js/busy.min.js">
 </script>
 	 
-	 
-	 
-	 
-	 
-<div class="col-lg-5">
-	<p>Select the Calendars with which you would like to check for open times</p>
 	
+<div class="container">
+    <form action="/conflicts" method="post">
+<h2>Calendars</h2>
 {% if session.calendars is defined  %}
-  <div class="col-lg-5">
-  <h4>Calendars</h4>
+<h5> Choose which calendars you would like to check for free times</h5>	
   {% for cal in session.calendars if cal.selected %}
           <div class="row-md-4">
-	   {{ cal.summary }}
 	     <input id="{{cal.id}}" name="check1" type="checkbox" {% if cal.id in session.selected_cal|safe %} checked {% endif %}>
+		  {{ cal.summary }}
           </div>
-         <!-- {% if loop.index is divisibleby 3 %}
-          </div> <div class="row">
-         {% endif %} -->
   {% endfor %}
   <br>
-  <button onclick="CalcBusyFreeTimes()">Calculate Busy & Free Times</button>
-</div>
 {% endif %} 
+        <div class="row">
+            <div class="col-sm-2">
+                <button onclick="goBack()" id="back">Back</button>
+                <script>
+                    function goBack() {
+                        window.history.back();
+                    }
+                </script>
+            </div>
+            <div class="col-sm-4">
+                <input type="submit" id="button" value="Next" />
+            </div>
+        </div>
+	</form>
 </div>

@@ -1,0 +1,53 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html lang="en"> <head>
+<title>Conflicts</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="stylesheet" type="text/css"
+     href="//cdn.jsdelivr.net/bootstrap/latest/css/bootstrap.css"
+/>
+
+<link rel="stylesheet" type="text/css"
+    href="/static/css/busy.css"
+/>
+
+<!-- jquery from a content distribution network; probably cached -->
+<script type="text/javascript"
+     src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js">
+</script>
+
+
+<!-- The rest of our javascript dependencies are bundled and -->
+<!-- 'minified' by 'browserify'  -->
+<script type="text/javascript"
+   src="/static/js/busy.min.js">
+</script>
+
+<div class="container">
+    <form action="/proposal" method="post">
+        {% if session.calendars is defined  %}
+            <h4>Uncheck any events which should not conflict with your meeting:</h4>
+            {% for event in session.busyEvents %}
+                <div class="row-md-4">
+                    <input value="{{event.id}}" name="checkedEvent" type="checkbox" checked>
+                    {{ event.summary }}
+                </div>
+            {% endfor %}
+            <br>
+        {% endif %}
+        <div class="row">
+            <div class="col-sm-2">
+                <button onclick="goBack()" id="button">Back</button>
+                <script>
+                    function goBack() {
+                        window.history.back();
+                    }
+                </script>
+            </div>
+            <div class="col-sm-2">
+                <input type="submit" id="button" value="Next" />
+            </div>
+        </div>
+    </form>
+</div>

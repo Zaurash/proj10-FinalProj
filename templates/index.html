@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html lang="en"> <head>
-<title>Appointments</title>
+<title>Arrange a Meeting</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <link rel="stylesheet" type="text/css"
@@ -47,119 +47,17 @@
 
 <body>
 <div class="container">
-
-<h1>Busy times</h1>
-
-<!--
-  -- If there are any warnings or other messages from a prior action,
-  -- they appear above the rest of the content, just until the next 
-  -- action.
-  -->
-
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <ul class=flashes>
-    {% for message in messages %}
-      <li>{{ message }}</li>
-    {% endfor %}
-    </ul>
-  {% endif %}
-{% endwith %}
-
-  <form action="/setrange" method="post">
-	  
-	  
-  <div class="col-lg-3">
-  <div class="row-lg-3">
-  <label> Meeting Name </label>
-  <input type="text" size="20" value="Important Rendezvous">
-</div>
-  <div class="row-lg-2">
-  <label> Location </label>
-  <input type="text" size="20" value="My balcony">
-</div>
-
-  
-  <h4>Date range</h4>
-  
-  <input type="text" name="daterange" size="12"
-    {% if session.daterange is defined %}
-         value="{{session.daterange}}"
-    {% endif %}
-     class="pull-down"
-     style="background: #fff; cursor: pointer; padding: 5px 10px;
-     border: 1px solid #ccc; width: 13em" >
-  <script type="text/javascript">
-  $(function() {
-  $('input[name="daterange"]').daterangepicker(
-    {    ranges: {
-           'Today': [moment(), moment()],
-           'Tomorrow':[moment().add(1, 'days'),
-                       moment().add(1, 'days')], 
-           'This week':[moment(), moment().endOf('week')],
-           'Next week':[moment().add(7, 'days').startOf('week'),
-                        moment().add(7, 'days').endOf('week')],
-           'This month':[moment(), moment().endOf('month')],
-           'Within two weeks':[moment(),moment().add(15, 'days')]
-        }}
-       );
-    });
-  </script>
-	
-
-  <h4>Start time</h4>
-        <div class="input-group bootstrap-timepicker timepicker">
-            <input id="timepicker1" name="begin_time" type="text" class="form-control input-small"
-		    {% if session.daterange is defined %}
-		         value="{{session.begin_time}}"
-		    {% endif %}>
-            <span class="input-group-addon"><i class="glyphicon glyphicon-time"></i></span>
+    <form method="POST" action="/account">
+        <div class="row">
+        <h1>Welcome!</h1>
+        <p>Username:</p>
+        <input type="text" name="username">
+        <p>Password:</p>
+        <input type="text" name="password">
         </div>
- 
-        <script type="text/javascript">
-            $('#timepicker1').timepicker();
-        </script>
-  <h4 style="margin-top: 1em;">End time</h4>
-<div class="input-group bootstrap-timepicker timepicker">
-    <input id="timepicker2" name="end_time" type="text" class="form-control input-small"
-    {% if session.daterange is defined %}
-         value="{{session.end_time}}"
-    {% endif %}>
-    <span class="input-group-addon"><i class="glyphicon glyphicon-time"></i></span>
-</div>
-
-<script type="text/javascript">
-    $('#timepicker2').timepicker();
-</script>
-  </script>
-	 
-<div> </div>
-
-<br /><input type="submit" id="button" value="Find Times" />
-</div>
-
-{% if session.calendars is defined  %}
-  <div class="col-lg-5">
-  <h4>Calendars</h4>
-  {% for cal in session.calendars if cal.selected %}
-          <div class="row-md-4">
-	   {{ cal.summary }}
-	     <input name="{{cal.summary}}" type="checkbox" value="{{cal}}" checked>
-          </div>
-         <!-- {% if loop.index is divisibleby 3 %}
-          </div> <div class="row">
-         {% endif %} -->
-  {% endfor %}
-</div>
-  <script type="text/javascript">
-  $("input:checkbox[name=type]:checked").each(function(){
-    yourArray.push($(this).val());
-  });
-  </script>
-{% endif %} 
-</form>
-
-
-    </div>  <!-- container (for bootstrap) -->
-  
-  </body> </html>
+        <div class="row">
+            <input type="submit" id="button" value="Sign In" />
+        </div>
+    </form>
+</div>  <!-- container (for bootstrap) -->
+</body> </html>

@@ -1,0 +1,52 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html lang="en"> <head>
+<title>View Meeting Proposal</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="stylesheet" type="text/css"
+     href="//cdn.jsdelivr.net/bootstrap/latest/css/bootstrap.css"
+/>
+
+<link rel="stylesheet" type="text/css"
+    href="/static/css/busy.css"
+/>
+
+<!-- jquery from a content distribution network; probably cached -->
+<script type="text/javascript"
+     src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js">
+</script>
+
+
+<!-- The rest of our javascript dependencies are bundled and -->
+<!-- 'minified' by 'browserify'  -->
+<script type="text/javascript"
+   src="/static/js/busy.min.js">
+</script>
+
+<div class="container">
+    <form action="/save" method="post">
+        <h2>{{ session.viewedProposal.title }}</h2>
+        <h4>{{ session.viewedProposal.location }}</h4>
+        {% for event in session.viewedProposal.events %}
+            <div class="row-md-4">
+                <input name="checkedEvent" value="{{event}}" type="checkbox" checked>
+                Potential time from {{ event.start.dateTime }} until {{ event.end.dateTime }}
+            </div>
+        {% endfor %}
+
+        <div class="row">
+            <div class="col-sm-2">
+                <button onclick="goBack()" id="button">Back</button>
+                <script>
+                    function goBack() {
+                        window.history.back();
+                    }
+                </script>
+            </div>
+            <div class="col-sm-2">
+                <input type="submit" id="button" value="Save Proposal" />
+            </div>
+        </div>
+    </form>
+</div>
