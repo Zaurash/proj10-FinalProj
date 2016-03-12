@@ -7,7 +7,7 @@ Files may be found ix at /home/users/zgj/CIS399/Project10/proj10-FinalProj
 ## Authors 
 
 Initial version by M Young; revised by Zachary Jones
-Collaborated with and helped tested by Caleb Friden
+Consulted with and helped tested by Caleb Friden
 
 ## Files Changed
 
