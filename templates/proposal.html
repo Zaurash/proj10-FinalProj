@@ -38,8 +38,13 @@
         {% endif %}
         <div class="row">
             <div class="col-sm-2">
-                <button onclick="location.href='/index';" id="button">Cancel</button>
+            	<button onclick="goBack()" id="back">Back</button>
             </div>
+            <script>
+                function goBack() {
+                    window.history.back();
+                }
+            </script>
             <div class="col-sm-2">
                 <input type="submit" id="update" value="Save Proposal" />
             </div>

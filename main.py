@@ -76,10 +76,6 @@ def account():
   if 'begin_date' not in flask.session:
     init_session_values()
 
-  ## We'll need authorization to list calendars
-  ## I wanted to put what follows into a function, but had
-  ## to pull it back here because the redirect has to be a
-  ## 'return'
   app.logger.debug("Checking credentials for Google calendar access")
   credentials = valid_credentials()
   if not credentials:
@@ -99,10 +95,6 @@ def home():
   if 'begin_date' not in flask.session:
     init_session_values()
 
-  ## We'll need authorization to list calendars
-  ## I wanted to put what follows into a function, but had
-  ## to pull it back here because the redirect has to be a
-  ## 'return'
   app.logger.debug("Checking credentials for Google calendar access")
   credentials = valid_credentials()
   if not credentials:
@@ -162,6 +154,7 @@ def clear():
     app.logger.debug("Cleared Memos")
 
     return flask.redirect(url_for("home"))
+    
 
 @app.route("/save", methods = ["POST"])
 def save():
@@ -182,10 +175,12 @@ def save():
     collection.insert(record)
     app.logger.debug("Saved Proposal")
     return flask.redirect(url_for("home"))
+    
 
 @app.route('/new', methods=['POST'])
 def new():
     return render_template('new.html')
+    
 
 @app.route('/view', methods=['POST'])
 def view():
@@ -199,6 +194,7 @@ def view():
                                        "events": proposal["events"]
                                        }
     return render_template('view.html')
+    
 
 @app.route('/proposal', methods=['POST'])
 def proposal():
@@ -214,10 +210,10 @@ def proposal():
     for event in busyEvents:
         eventStart = arrow.get(event["start"]["dateTime"])
         eventEnd = arrow.get(event["end"]["dateTime"])
-        print("Busy  at : " + event["summary"])
-        print("     from: " + eventStart.format("h:mm a MMM D YYYY"))
-        print("     until: " + eventEnd.format("h:mm a MMM D YYYY"))
-        print("     type: " + str(type(eventEnd)))
+        # print("Busy  at : " + event["summary"])
+        # print("     from: " + eventStart.format("h:mm a MMM D YYYY"))
+        # print("     until: " + eventEnd.format("h:mm a MMM D YYYY"))
+        # print("     type: " + str(type(eventEnd)))
 
     # Make events for all days in our date and time range
 
@@ -244,10 +240,10 @@ def proposal():
     for event in meetingTimes:
         eventStart = event["start"]["dateTime"]
         eventEnd = event["end"]["dateTime"]
-        print("Free  at : " + event["summary"])
-        print("     from: " + str(eventStart))
-        print("     until: " + str(eventEnd))
-        print("     type: " + str(type(eventEnd)))
+        # print("Free  at : " + event["summary"])
+        # print("     from: " + str(eventStart))
+        # print("     until: " + str(eventEnd))
+        # print("     type: " + str(type(eventEnd)))
 
     flask.session["freeTimes"] = meetingTimes
 
@@ -285,6 +281,7 @@ def conflicts():
 
     flask.session["busyEvents"] = busyEvents
     return render_template('conflicts.html')
+    
 
 @app.route('/calendars', methods=['POST'])
 def calendars():
@@ -293,7 +290,7 @@ def calendars():
     widget.
     """
     app.logger.debug("Entering setrange")
-    flask.flash("Setrange gave us '{}'".format(request.form.get('daterange')) + ", " + request.form.get('begin_time') + " - " + request.form.get('end_time'))
+    # flask.flash("Setrange gave us '{}'".format(request.form.get('daterange')) + ", " + request.form.get('begin_time') + " - " + request.form.get('end_time'))
     daterange = request.form.get('daterange')
     flask.session['daterange'] = daterange
     daterange_parts = daterange.split()
@@ -308,6 +305,55 @@ def calendars():
       daterange_parts[0], daterange_parts[1],
       flask.session['begin_date'], flask.session['end_date']))
     return render_template('calendars.html')
+    
+
+@app.route('/calendars_from_view', methods=['POST'])
+def calendars_from_view():
+    """
+    User chose a date range with the bootstrap daterange
+    widget.
+    """
+    
+    checkedEventsTitles = request.form.getlist("checkedEvent")
+    checkedEvents= []
+
+    for title in checkedEventsTitles:
+        for event in flask.session["viewedProposal"]["events"]:
+            if event["summary"] == title:
+                checkedEvents.append(event)
+                
+    flask.session["viewedProposal"]["events"] = checkedEvents
+    
+    return render_template('calendars_from_view.html')
+    
+@app.route('/events', methods=['POST'])
+def events():
+    flask.session["selected_cals"] = request.form.getlist("checkedCal")
+    app.logger.debug("Checking credentials for Google calendar access")
+    credentials = valid_credentials()
+    if not credentials:
+      app.logger.debug("Redirecting to authorization")
+      return flask.redirect(flask.url_for('oauth2callback'))
+
+    gcal_service = get_gcal_service(credentials)
+    app.logger.debug("Returned from get_gcal_service")
+
+    busyEvents = []
+    for cal in list_calendars(gcal_service):
+        for selectedCalID in flask.session["selected_cals"]:
+            if cal["id"] == selectedCalID:
+                eventsFromGcal = gcal_service.events().list(calendarId=cal["id"]).execute()
+                for gcalEvent in eventsFromGcal['items']:
+                    if ("transparency" in event) and event["transparency"] == "transparent":
+                        continue
+                    if "dateTime" in eventFromGcal["start"]:
+                       for event in flask.session["viewedProposal"]["events"]:
+                           if eventsOverlap(gcalEvent,event):
+                               busyEvents.append(event)
+
+    flask.session["busyEvents"] = busyEvents
+    return render_template('conflicts.html')
+    
 
 ###
 #

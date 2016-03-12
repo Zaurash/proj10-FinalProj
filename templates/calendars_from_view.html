@@ -1,7 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html lang="en"> <head>
-<title>Conflicts</title>
-
+<title>Calendars</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <link rel="stylesheet" type="text/css"
@@ -17,25 +16,26 @@
      src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js">
 </script>
 
-
 <!-- The rest of our javascript dependencies are bundled and -->
 <!-- 'minified' by 'browserify'  -->
-<script type="text/javascript"
+<script type="text/javascript" 
    src="/static/js/busy.min.js">
 </script>
-
+	 
+	
 <div class="container">
-    <form action="/proposal" method="post">
-        {% if session.calendars is defined  %}
-            <h4>Uncheck any events which should not conflict with your meeting:</h4>
-            {% for event in session.busyEvents %}
-                <div class="row-md-4">
-                    <input value="{{event.id}}" name="checkedEvent" type="checkbox" checked>
-                    {{ event.summary }}
-                </div>
-            {% endfor %}
-            <br>
-        {% endif %}
+    <form action="/conflicts" method="post">
+<h2>Calendars</h2>
+{% if session.calendars is defined  %}
+<h5> Choose which calendars you would like to check for free times</h5>	
+  {% for cal in session.calendars if cal.selected %}
+          <div class="row-md-4">
+	     <input id="{{cal.id}}" name="check1" type="checkbox" {% if cal.id in session.selected_cal|safe %} checked {% endif %}>
+		  {{ cal.summary }}
+          </div>
+  {% endfor %}
+  <br>
+{% endif %} 
         <div class="row">
             <div class="col-sm-2">
                 <button onclick="goBack()" id="back">Back</button>
@@ -45,9 +45,9 @@
                     }
                 </script>
             </div>
-            <div class="col-sm-2">
+            <div class="col-sm-4">
                 <input type="submit" id="button" value="Next" />
             </div>
         </div>
-    </form>
+	</form>
 </div>

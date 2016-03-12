@@ -58,3 +58,10 @@ body {
 	font-size:15px;
     border:1px solid blue;
 }
+
+#check {
+    width:250px;
+	height:30px;
+	font-size:15px;
+    border:1px solid blue;
+}
